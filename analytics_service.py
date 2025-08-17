@@ -449,50 +449,238 @@ class AnalyticsService:
             raise
     
     @staticmethod
-    def get_leaderboard(limit: int = 50) -> List[Dict]:
+    def get_leaderboard(limit: int = 50, page: int = 1, company_filter: str = None, year_filter: int = None, branch_filter: str = None) -> Dict:
         """
-        Get leaderboard data with privacy protection
+        Get leaderboard data with privacy protection and pagination
         
         Args:
-            limit: Maximum number of users to return
+            limit: Maximum number of users per page
+            page: Page number (1-indexed)
+            company_filter: Filter by specific company tests
+            year_filter: Filter by student year
+            branch_filter: Filter by student branch
             
         Returns:
-            List of leaderboard entries
+            Dictionary containing leaderboard data and pagination info
         """
         try:
-            # Calculate average scores for all users
-            leaderboard_query = db.session.query(
+            # Base query for leaderboard calculation
+            base_query = db.session.query(
                 User.id,
                 User.name,
                 User.year,
                 User.branch,
                 func.count(TestAttempt.id).label('total_tests'),
                 func.avg(TestAttempt.score / TestAttempt.total_questions * 100).label('avg_score'),
-                func.sum(TestAttempt.time_taken).label('total_time')
+                func.sum(TestAttempt.time_taken).label('total_time'),
+                func.max(TestAttempt.completed_at).label('last_test_date')
             ).join(
                 TestAttempt, User.id == TestAttempt.user_id
-            ).group_by(
+            )
+            
+            # Apply company filter if specified
+            if company_filter:
+                base_query = base_query.join(Test, TestAttempt.test_id == Test.id).filter(Test.company == company_filter)
+            
+            # Apply year filter if specified
+            if year_filter:
+                base_query = base_query.filter(User.year == year_filter)
+            
+            # Apply branch filter if specified
+            if branch_filter:
+                base_query = base_query.filter(User.branch == branch_filter)
+            
+            # Group and filter
+            leaderboard_query = base_query.group_by(
                 User.id, User.name, User.year, User.branch
             ).having(
                 func.count(TestAttempt.id) >= 3  # Minimum 3 tests for leaderboard
             ).order_by(
-                desc('avg_score')
-            ).limit(limit).all()
+                desc('avg_score'),
+                desc('total_tests'),
+                func.sum(TestAttempt.time_taken).asc()  # Faster completion as tiebreaker
+            )
+            
+            # Get total count for pagination
+            total_count = leaderboard_query.count()
+            
+            # Apply pagination
+            offset = (page - 1) * limit
+            paginated_results = leaderboard_query.offset(offset).limit(limit).all()
             
             leaderboard = []
-            for rank, entry in enumerate(leaderboard_query, 1):
+            for i, entry in enumerate(paginated_results):
+                global_rank = offset + i + 1
                 leaderboard.append({
-                    'rank': rank,
-                    'name': entry.name.split()[0] + ' ' + entry.name.split()[-1][0] + '.',  # Privacy protection
+                    'rank': global_rank,
+                    'user_id': entry.id,  # Keep for position finding
+                    'name': AnalyticsService._anonymize_name(entry.name),
                     'year': entry.year,
                     'branch': entry.branch,
                     'total_tests': entry.total_tests,
                     'average_score': round(entry.avg_score, 2),
-                    'total_time_hours': round((entry.total_time or 0) / 3600, 1)
+                    'total_time_hours': round((entry.total_time or 0) / 3600, 1),
+                    'last_test_date': entry.last_test_date.strftime('%Y-%m-%d') if entry.last_test_date else None
                 })
             
-            return leaderboard
+            # Calculate pagination info
+            total_pages = (total_count + limit - 1) // limit
+            has_next = page < total_pages
+            has_prev = page > 1
+            
+            return {
+                'leaderboard': leaderboard,
+                'pagination': {
+                    'current_page': page,
+                    'total_pages': total_pages,
+                    'total_count': total_count,
+                    'has_next': has_next,
+                    'has_prev': has_prev,
+                    'per_page': limit
+                },
+                'filters': {
+                    'company': company_filter,
+                    'year': year_filter,
+                    'branch': branch_filter
+                }
+            }
             
         except Exception as e:
             logger.error(f"Error generating leaderboard: {str(e)}")
-            return []
+            return {
+                'leaderboard': [],
+                'pagination': {
+                    'current_page': 1,
+                    'total_pages': 0,
+                    'total_count': 0,
+                    'has_next': False,
+                    'has_prev': False,
+                    'per_page': limit
+                },
+                'filters': {}
+            }
+    
+    @staticmethod
+    def _anonymize_name(full_name: str) -> str:
+        """
+        Anonymize user name for privacy protection
+        
+        Args:
+            full_name: Full name of the user
+            
+        Returns:
+            Anonymized name (First name + Last initial)
+        """
+        if not full_name or not full_name.strip():
+            return "Anonymous"
+        
+        name_parts = full_name.strip().split()
+        if len(name_parts) == 1:
+            return name_parts[0]
+        elif len(name_parts) >= 2:
+            return f"{name_parts[0]} {name_parts[-1][0]}."
+        else:
+            return full_name
+    
+    @staticmethod
+    def get_user_leaderboard_position(user_id: int, company_filter: str = None, year_filter: int = None, branch_filter: str = None) -> Dict:
+        """
+        Get specific user's position in leaderboard with nearby competitors
+        
+        Args:
+            user_id: ID of the user
+            company_filter: Filter by specific company tests
+            year_filter: Filter by student year
+            branch_filter: Filter by student branch
+            
+        Returns:
+            Dictionary containing user position and nearby competitors
+        """
+        try:
+            # Get full leaderboard to find user position
+            full_leaderboard = AnalyticsService.get_leaderboard(
+                limit=10000,  # Large limit to get all users
+                page=1,
+                company_filter=company_filter,
+                year_filter=year_filter,
+                branch_filter=branch_filter
+            )
+            
+            user_position = None
+            user_entry = None
+            
+            # Find user in leaderboard
+            for entry in full_leaderboard['leaderboard']:
+                if entry['user_id'] == user_id:
+                    user_position = entry['rank']
+                    user_entry = entry
+                    break
+            
+            if not user_position:
+                return {
+                    'user_position': None,
+                    'message': 'User not found in leaderboard. Complete at least 3 tests to appear.',
+                    'nearby_competitors': []
+                }
+            
+            # Get nearby competitors (2 above and 2 below)
+            nearby_start = max(0, user_position - 3)
+            nearby_end = min(len(full_leaderboard['leaderboard']), user_position + 2)
+            nearby_competitors = full_leaderboard['leaderboard'][nearby_start:nearby_end]
+            
+            # Remove user_id from nearby competitors for privacy
+            for competitor in nearby_competitors:
+                if competitor['user_id'] != user_id:
+                    competitor.pop('user_id', None)
+                else:
+                    competitor['is_current_user'] = True
+            
+            return {
+                'user_position': user_position,
+                'user_entry': {k: v for k, v in user_entry.items() if k != 'user_id'},
+                'nearby_competitors': nearby_competitors,
+                'total_participants': full_leaderboard['pagination']['total_count']
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting user leaderboard position for user {user_id}: {str(e)}")
+            return {
+                'user_position': None,
+                'message': 'Error retrieving leaderboard position',
+                'nearby_competitors': []
+            }
+    
+    @staticmethod
+    def get_leaderboard_filters() -> Dict:
+        """
+        Get available filter options for leaderboard
+        
+        Returns:
+            Dictionary containing available filter values
+        """
+        try:
+            # Get unique companies from tests
+            companies = db.session.query(Test.company).distinct().all()
+            company_list = [company[0] for company in companies]
+            
+            # Get unique years from users who have taken tests
+            years = db.session.query(User.year).join(TestAttempt).distinct().filter(User.year.isnot(None)).all()
+            year_list = sorted([year[0] for year in years if year[0]])
+            
+            # Get unique branches from users who have taken tests
+            branches = db.session.query(User.branch).join(TestAttempt).distinct().filter(User.branch.isnot(None)).all()
+            branch_list = sorted([branch[0] for branch in branches if branch[0]])
+            
+            return {
+                'companies': company_list,
+                'years': year_list,
+                'branches': branch_list
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting leaderboard filters: {str(e)}")
+            return {
+                'companies': [],
+                'years': [],
+                'branches': []
+            }

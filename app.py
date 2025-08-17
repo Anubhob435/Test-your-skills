@@ -44,10 +44,12 @@ from auth_routes import auth_bp
 from test_routes import test_bp
 from dashboard_routes import dashboard_bp
 from profile_routes import profile_bp
+from leaderboard_routes import leaderboard_bp
 app.register_blueprint(auth_bp)
 app.register_blueprint(test_bp)
 app.register_blueprint(dashboard_bp)
 app.register_blueprint(profile_bp)
+app.register_blueprint(leaderboard_bp)
 
 # Initialize authentication middleware
 from auth_middleware import AuthMiddleware
@@ -80,6 +82,12 @@ def test_history():
 @login_required
 def profile():
     return render_template('profile.html')
+
+# Leaderboard route
+@app.route('/leaderboard')
+@login_required
+def leaderboard():
+    return render_template('leaderboard.html')
 
 # Test interface route
 @app.route('/test/<int:test_id>')

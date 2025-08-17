@@ -45,6 +45,27 @@ def create_test_app():
     app.register_blueprint(auth_bp)
     app.register_blueprint(test_bp)
     
+    # Add basic routes for testing
+    @app.route('/')
+    def index():
+        return 'Test Index'
+    
+    @app.route('/dashboard')
+    def dashboard():
+        return 'Test Dashboard'
+    
+    @app.route('/leaderboard')
+    def leaderboard():
+        return 'Test Leaderboard'
+    
+    @app.route('/profile')
+    def profile():
+        return 'Test Profile'
+    
+    @app.route('/test-history')
+    def test_history():
+        return 'Test History'
+    
     # Initialize authentication middleware
     from auth_middleware import AuthMiddleware
     auth_middleware = AuthMiddleware(app)

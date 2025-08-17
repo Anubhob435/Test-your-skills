@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+
+{% block title %}Leaderboard - UEM Placement Preparation Platform{% endblock %}
+
+{% block head %}
+<style>
+    .leaderboard-card {
+        transition: all 0.3s ease;
+    }
+    .leaderboard-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    }
+    .rank-badge {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    .rank-1 {
+        background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+        color: #8b5a00;
+    }
+    .rank-2 {
+        background: linear-gradient(135deg, #c0c0c0 0%, #e8e8e8 100%);
+        color: #4a4a4a;
+    }
+    .rank-3 {
+        background: linear-gradient(135deg, #cd7f32 0%, #daa520 100%);
+        color: #5d4e37;
+    }
+    .filter-active {
+        background-color: #3b82f6;
+        color: white;
+    }
+    .loading-spinner {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #3498db;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="px-4 sm:px-6 lg:px-8">
+    <!-- Header Section -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">🏆 Leaderboard</h1>
+        <p class="text-gray-600">See how you rank among your peers at UEM</p>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8" id="statsCards">
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="p-2 bg-blue-100 rounded-lg">
+                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500">Total Participants</p>
+                    <p class="text-2xl font-semibold text-gray-900" id="totalParticipants">-</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="p-2 bg-green-100 rounded-lg">
+                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500">Tests Taken</p>
+                    <p class="text-2xl font-semibold text-gray-900" id="totalTests">-</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="p-2 bg-yellow-100 rounded-lg">
+                    <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500">Platform Average</p>
+                    <p class="text-2xl font-semibold text-gray-900" id="platformAverage">-</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="p-2 bg-purple-100 rounded-lg">
+                    <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path>
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500">Highest Score</p>
+                    <p class="text-2xl font-semibold text-gray-900" id="highestScore">-</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Your Position Card -->
+    <div class="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg shadow-lg p-6 mb-8 text-white" id="userPositionCard" style="display: none;">
+        <h3 class="text-lg font-semibold mb-4">Your Position</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="text-center">
+                <p class="text-3xl font-bold" id="userRank">-</p>
+                <p class="text-blue-100">Current Rank</p>
+            </div>
+            <div class="text-center">
+                <p class="text-3xl font-bold" id="userScore">-</p>
+                <p class="text-blue-100">Average Score</p>
+            </div>
+            <div class="text-center">
+                <p class="text-3xl font-bold" id="userTests">-</p>
+                <p class="text-blue-100">Tests Taken</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="bg-white rounded-lg shadow p-6 mb-8">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Filters</h3>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+                <label for="companyFilter" class="block text-sm font-medium text-gray-700 mb-2">Company</label>
+                <select id="companyFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">All Companies</option>
+                </select>
+            </div>
+            <div>
+                <label for="yearFilter" class="block text-sm font-medium text-gray-700 mb-2">Year</label>
+                <select id="yearFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">All Years</option>
+                </select>
+            </div>
+            <div>
+                <label for="branchFilter" class="block text-sm font-medium text-gray-700 mb-2">Branch</label>
+                <select id="branchFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">All Branches</option>
+                </select>
+            </div>
+            <div class="flex items-end">
+                <button id="clearFilters" class="w-full px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors">
+                    Clear Filters
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaderboard Table -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-900">Rankings</h3>
+        </div>
+        
+        <!-- Loading State -->
+        <div id="loadingState" class="flex justify-center items-center py-12">
+            <div class="loading-spinner"></div>
+            <span class="ml-3 text-gray-600">Loading leaderboard...</span>
+        </div>
+
+        <!-- Leaderboard Content -->
+        <div id="leaderboardContent" style="display: none;">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rank</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Year</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tests</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg Score</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time Spent</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboardTableBody" class="bg-white divide-y divide-gray-200">
+                        <!-- Leaderboard entries will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+                <div class="flex-1 flex justify-between sm:hidden">
+                    <button id="prevPageMobile" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Previous
+                    </button>
+                    <button id="nextPageMobile" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Next
+                    </button>
+                </div>
+                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm text-gray-700" id="paginationInfo">
+                            Showing <span id="showingFrom">1</span> to <span id="showingTo">10</span> of <span id="totalCount">0</span> results
+                        </p>
+                    </div>
+                    <div>
+                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" id="paginationNav">
+                            <!-- Pagination buttons will be populated here -->
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="text-center py-12" style="display: none;">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-900">No rankings available</h3>
+            <p class="mt-1 text-sm text-gray-500">Complete at least 3 tests to appear on the leaderboard.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/leaderboard.js') }}"></script>
+{% endblock %}
