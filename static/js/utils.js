@@ -2,6 +2,32 @@
 
 // API utility functions
 const API = {
+    // Get CSRF token from meta tag or cookie
+    getCSRFToken() {
+        // Try to get from meta tag first
+        const metaToken = document.querySelector('meta[name="csrf-token"]');
+        if (metaToken) {
+            return metaToken.getAttribute('content');
+        }
+        
+        // Try to get from hidden input in forms
+        const hiddenToken = document.querySelector('input[name="csrf_token"]');
+        if (hiddenToken) {
+            return hiddenToken.value;
+        }
+        
+        // Try to get from cookie
+        const cookies = document.cookie.split(';');
+        for (let cookie of cookies) {
+            const [name, value] = cookie.trim().split('=');
+            if (name === 'csrf_token') {
+                return decodeURIComponent(value);
+            }
+        }
+        
+        return null;
+    },
+
     // Base API call function
     async call(endpoint, options = {}) {
         const defaultOptions = {
@@ -10,6 +36,14 @@ const API = {
             },
         };
 
+        // Add CSRF token for state-changing requests
+        if (options.method && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(options.method.toUpperCase())) {
+            const csrfToken = this.getCSRFToken();
+            if (csrfToken) {
+                defaultOptions.headers['X-CSRFToken'] = csrfToken;
+            }
+        }
+
         const config = { ...defaultOptions, ...options };
         
         try {
@@ -17,7 +51,7 @@ const API = {
             const data = await response.json();
             
             if (!response.ok) {
-                throw new Error(data.message || 'API call failed');
+                throw new Error(data.message || data.error || 'API call failed');
             }
             
             return data;
