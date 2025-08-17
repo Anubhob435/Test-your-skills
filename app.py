@@ -41,7 +41,9 @@ from models import User, Test, Question, TestAttempt, ProgressMetrics
 
 # Import and register blueprints
 from auth_routes import auth_bp
+from test_routes import test_bp
 app.register_blueprint(auth_bp)
+app.register_blueprint(test_bp)
 
 # Initialize authentication middleware
 from auth_middleware import AuthMiddleware
