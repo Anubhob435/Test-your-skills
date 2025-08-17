@@ -43,9 +43,11 @@ from models import User, Test, Question, TestAttempt, ProgressMetrics
 from auth_routes import auth_bp
 from test_routes import test_bp
 from dashboard_routes import dashboard_bp
+from profile_routes import profile_bp
 app.register_blueprint(auth_bp)
 app.register_blueprint(test_bp)
 app.register_blueprint(dashboard_bp)
+app.register_blueprint(profile_bp)
 
 # Initialize authentication middleware
 from auth_middleware import AuthMiddleware
@@ -72,6 +74,12 @@ def dashboard():
 @login_required
 def test_history():
     return render_template('test-history.html')
+
+# Profile route
+@app.route('/profile')
+@login_required
+def profile():
+    return render_template('profile.html')
 
 # Test interface route
 @app.route('/test/<int:test_id>')
