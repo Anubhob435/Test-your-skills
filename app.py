@@ -22,6 +22,11 @@ from config import config
 config_name = os.environ.get('FLASK_ENV', 'development')
 app.config.from_object(config.get(config_name, config['default']))
 
+# Setup logging first
+from logging_config import setup_logging
+setup_logging(app)
+logger = logging.getLogger(__name__)
+
 # Initialize extensions
 from models import db
 db.init_app(app)
@@ -32,9 +37,13 @@ login_manager.login_message = 'Please log in to access this page.'
 jwt = JWTManager(app)
 CORS(app)
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Setup error handlers
+from error_handlers import register_error_handlers
+register_error_handlers(app)
+
+# Setup request logging
+from request_logging import setup_request_logging
+setup_request_logging(app)
 
 # Import models after db initialization
 from models import User, Test, Question, TestAttempt, ProgressMetrics
@@ -135,20 +144,7 @@ def health_check():
         'database': 'connected' if db.session.execute(db.text('SELECT 1')).scalar() == 1 else 'disconnected'
     })
 
-# Error handlers
-@app.errorhandler(404)
-def not_found_error(error):
-    return jsonify({'error': 'Not found', 'message': 'The requested resource was not found'}), 404
-
-@app.errorhandler(500)
-def internal_error(error):
-    db.session.rollback()
-    logger.error(f'Server Error: {error}')
-    return jsonify({'error': 'Internal server error', 'message': 'An unexpected error occurred'}), 500
-
-@app.errorhandler(403)
-def forbidden_error(error):
-    return jsonify({'error': 'Forbidden', 'message': 'You do not have permission to access this resource'}), 403
+# Error handlers are now registered in error_handlers.py
 
 if __name__ == '__main__':
     with app.app_context():
