@@ -73,6 +73,41 @@ def dashboard():
 def test_history():
     return render_template('test-history.html')
 
+# Test interface route
+@app.route('/test/<int:test_id>')
+@login_required
+def test_interface(test_id):
+    # This would normally fetch test data from database
+    # For now, we'll pass basic test structure
+    test_data = {
+        'id': test_id,
+        'company': 'Sample Company',
+        'total_questions': 50,
+        'time_limit': 3600,  # 1 hour in seconds
+        'sections': []
+    }
+    return render_template('test.html', test=test_data)
+
+# Test results route
+@app.route('/test/<int:test_id>/results/<int:attempt_id>')
+@login_required
+def test_results(test_id, attempt_id):
+    # This would normally fetch test and attempt data from database
+    # For now, we'll pass basic structure
+    test_data = {
+        'id': test_id,
+        'company': 'Sample Company'
+    }
+    attempt_data = {
+        'id': attempt_id,
+        'score': 35,
+        'total_questions': 50,
+        'time_taken': 2400,  # 40 minutes in seconds
+        'answers': {},
+        'completed_at': datetime.utcnow()
+    }
+    return render_template('results.html', test=test_data, attempt=attempt_data)
+
 # Health check endpoint
 @app.route('/health')
 def health_check():

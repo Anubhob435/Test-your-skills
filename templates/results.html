@@ -1,0 +1,418 @@
+{% extends "base.html" %} {% block title %}Test Results - {{ test.company }} -
+UEM Placement Preparation Platform{% endblock %} {% block head %}
+<style>
+  .score-circle {
+    position: relative;
+    width: 120px;
+    height: 120px;
+  }
+
+  .score-circle svg {
+    transform: rotate(-90deg);
+  }
+
+  .score-circle .score-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1.5rem;
+    font-weight: bold;
+  }
+
+  .question-review-card {
+    transition: all 0.3s ease;
+  }
+
+  .question-review-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  .correct-answer {
+    background-color: #d1fae5;
+    border-color: #10b981;
+  }
+
+  .incorrect-answer {
+    background-color: #fee2e2;
+    border-color: #ef4444;
+  }
+
+  .not-attempted {
+    background-color: #f3f4f6;
+    border-color: #9ca3af;
+  }
+
+  .explanation-card {
+    background: linear-gradient(135deg, #ebf8ff 0%, #f0f9ff 100%);
+    border-left: 4px solid #3b82f6;
+  }
+
+  .performance-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+
+  .performance-excellent {
+    background-color: #d1fae5;
+    color: #065f46;
+  }
+
+  .performance-good {
+    background-color: #dbeafe;
+    color: #1e40af;
+  }
+
+  .performance-average {
+    background-color: #fef3c7;
+    color: #92400e;
+  }
+
+  .performance-poor {
+    background-color: #fee2e2;
+    color: #991b1b;
+  }
+
+  .section-progress {
+    height: 8px;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .chart-container {
+    position: relative;
+    height: 300px;
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fade-in {
+    animation: fadeInUp 0.6s ease-out;
+  }
+
+  .filter-btn {
+    transition: all 0.2s ease;
+  }
+
+  .filter-btn.active {
+    background-color: #3b82f6;
+    color: white;
+  }
+</style>
+{% endblock %} {% block content %}
+<div class="min-h-screen bg-gray-50">
+  <!-- Results Header -->
+  <div class="bg-white shadow-sm border-b">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-3xl font-bold text-gray-900">Test Results</h1>
+          <p class="text-lg text-gray-600 mt-1">
+            {{ test.company }} Placement Test
+          </p>
+          <p class="text-sm text-gray-500 mt-1">
+            Completed on {{ attempt.completed_at.strftime('%B %d, %Y at %I:%M
+            %p') }}
+          </p>
+        </div>
+
+        <div class="flex space-x-4">
+          <button
+            id="download-report-btn"
+            class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            Download Report
+          </button>
+          <a
+            href="{{ url_for('dashboard') }}"
+            class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Back to Dashboard
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div id="loading-state" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="text-center">
+      <div
+        class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"
+      ></div>
+      <p class="text-gray-600">Loading your results...</p>
+    </div>
+  </div>
+
+  <!-- Results Content -->
+  <div
+    id="results-content"
+    class="hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
+  >
+    <!-- Score Overview -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+      <!-- Main Score Card -->
+      <div class="lg:col-span-2 bg-white rounded-lg shadow-md p-8">
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-2xl font-semibold text-gray-900">Your Score</h2>
+          <span id="performance-badge" class="performance-badge">
+            <!-- Performance level will be set by JavaScript -->
+          </span>
+        </div>
+
+        <div class="flex items-center space-x-8">
+          <!-- Score Circle -->
+          <div class="score-circle">
+            <svg width="120" height="120" viewBox="0 0 120 120">
+              <circle
+                cx="60"
+                cy="60"
+                r="54"
+                stroke="#E5E7EB"
+                stroke-width="8"
+                fill="none"
+              ></circle>
+              <circle
+                id="score-progress"
+                cx="60"
+                cy="60"
+                r="54"
+                stroke="#3B82F6"
+                stroke-width="8"
+                fill="none"
+                stroke-linecap="round"
+                stroke-dasharray="339.292"
+                stroke-dashoffset="339.292"
+              ></circle>
+            </svg>
+            <div class="score-text">
+              <div id="score-percentage" class="text-blue-600">0%</div>
+            </div>
+          </div>
+
+          <!-- Score Details -->
+          <div class="flex-1">
+            <div class="grid grid-cols-2 gap-6">
+              <div>
+                <p class="text-sm text-gray-600">Correct Answers</p>
+                <p id="correct-count" class="text-2xl font-bold text-green-600">
+                  0
+                </p>
+              </div>
+              <div>
+                <p class="text-sm text-gray-600">Total Questions</p>
+                <p id="total-count" class="text-2xl font-bold text-gray-900">
+                  0
+                </p>
+              </div>
+              <div>
+                <p class="text-sm text-gray-600">Time Taken</p>
+                <p id="time-taken" class="text-2xl font-bold text-gray-900">
+                  --:--
+                </p>
+              </div>
+              <div>
+                <p class="text-sm text-gray-600">Accuracy</p>
+                <p id="accuracy-rate" class="text-2xl font-bold text-blue-600">
+                  0%
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Stats -->
+      <div class="space-y-6">
+        <!-- Section Performance -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <h3 class="text-lg font-semibold text-gray-900 mb-4">
+            Section Performance
+          </h3>
+          <div id="section-performance" class="space-y-4">
+            <!-- Section performance will be loaded here -->
+          </div>
+        </div>
+
+        <!-- Comparison -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <h3 class="text-lg font-semibold text-gray-900 mb-4">Comparison</h3>
+          <div class="space-y-3">
+            <div class="flex justify-between items-center">
+              <span class="text-sm text-gray-600">Your Score</span>
+              <span id="comparison-your-score" class="font-semibold">0%</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-sm text-gray-600">Average Score</span>
+              <span id="comparison-average" class="font-semibold">0%</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-sm text-gray-600">Your Rank</span>
+              <span id="comparison-rank" class="font-semibold">--</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Question Review Section -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-xl font-semibold text-gray-900">Question Review</h2>
+
+        <!-- Filter Buttons -->
+        <div class="flex space-x-2">
+          <button
+            class="filter-btn active px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            data-filter="all"
+          >
+            All Questions
+          </button>
+          <button
+            class="filter-btn px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            data-filter="correct"
+          >
+            Correct
+          </button>
+          <button
+            class="filter-btn px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            data-filter="incorrect"
+          >
+            Incorrect
+          </button>
+          <button
+            class="filter-btn px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            data-filter="not-attempted"
+          >
+            Not Attempted
+          </button>
+        </div>
+      </div>
+
+      <!-- Questions Grid -->
+      <div id="questions-review" class="space-y-6">
+        <!-- Questions will be loaded here -->
+      </div>
+
+      <!-- Load More Button -->
+      <div class="text-center mt-8">
+        <button
+          id="load-more-questions"
+          class="hidden px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+        >
+          Load More Questions
+        </button>
+      </div>
+    </div>
+
+    <!-- Recommendations -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+      <h2 class="text-xl font-semibold text-gray-900 mb-6">Recommendations</h2>
+      <div
+        id="recommendations-content"
+        class="grid grid-cols-1 md:grid-cols-2 gap-6"
+      >
+        <!-- Recommendations will be loaded here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Error State -->
+  <div
+    id="error-state"
+    class="hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
+  >
+    <div class="text-center">
+      <div class="text-red-500 mb-4">
+        <svg class="w-16 h-16 mx-auto" fill="currentColor" viewBox="0 0 20 20">
+          <path
+            fill-rule="evenodd"
+            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+            clip-rule="evenodd"
+          ></path>
+        </svg>
+      </div>
+      <h3 class="text-lg font-semibold text-gray-900 mb-2">
+        Unable to load results
+      </h3>
+      <p class="text-gray-600 mb-4">
+        There was an error loading your test results.
+      </p>
+      <button
+        id="retry-load-btn"
+        class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+      >
+        Try Again
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Question Detail Modal -->
+<div
+  id="question-modal"
+  class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+>
+  <div
+    class="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+  >
+    <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4">
+      <div class="flex items-center justify-between">
+        <h3
+          id="modal-question-title"
+          class="text-lg font-semibold text-gray-900"
+        >
+          Question Details
+        </h3>
+        <button
+          id="close-question-modal"
+          class="text-gray-400 hover:text-gray-600"
+        >
+          <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+            <path
+              fill-rule="evenodd"
+              d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+              clip-rule="evenodd"
+            ></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="p-6">
+      <div id="modal-question-content">
+        <!-- Question content will be loaded here -->
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block scripts %}
+<script>
+  // Pass results data to JavaScript
+  window.resultsData = {
+      testId: {{ test.id | default(0) }},
+      attemptId: {{ attempt.id | default(0) }},
+      company: "{{ test.company | default('Unknown') }}",
+      score: {{ attempt.score | default(0) }},
+      totalQuestions: {{ attempt.total_questions | default(0) }},
+      timeTaken: {{ attempt.time_taken | default(0) }},
+      answers: {{ (attempt.answers or {}) | tojson | safe }},
+      completedAt: "{{ attempt.completed_at.isoformat() if attempt.completed_at else '' }}"
+  };
+</script>
+<script src="{{ url_for('static', filename='js/results.js') }}"></script>
+{% endblock %}

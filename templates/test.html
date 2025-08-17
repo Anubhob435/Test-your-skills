@@ -1,0 +1,332 @@
+{% extends "base.html" %}
+
+{% block title %}Test - {{ test.company }} - UEM Placement Preparation Platform{% endblock %}
+
+{% block head %}
+<style>
+    .question-card {
+        transition: all 0.3s ease;
+    }
+    
+    .question-card.active {
+        border-color: #3B82F6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    
+    .option-button {
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    
+    .option-button:hover {
+        background-color: #F3F4F6;
+        border-color: #6B7280;
+    }
+    
+    .option-button.selected {
+        background-color: #EBF8FF;
+        border-color: #3B82F6;
+        color: #1E40AF;
+    }
+    
+    .timer-warning {
+        animation: pulse 1s infinite;
+    }
+    
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+    }
+    
+    .progress-bar {
+        transition: width 0.3s ease;
+    }
+    
+    .question-nav-btn {
+        transition: all 0.2s ease;
+    }
+    
+    .question-nav-btn.answered {
+        background-color: #10B981;
+        color: white;
+    }
+    
+    .question-nav-btn.current {
+        background-color: #3B82F6;
+        color: white;
+    }
+    
+    .question-nav-btn:hover {
+        transform: scale(1.05);
+    }
+    
+    .section-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50">
+    <!-- Test Header -->
+    <div class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">{{ test.company }} Placement Test</h1>
+                    <p class="text-sm text-gray-600 mt-1">
+                        <span id="current-section">Loading...</span> • 
+                        Question <span id="current-question-num">1</span> of <span id="total-questions">{{ test.total_questions }}</span>
+                    </p>
+                </div>
+                
+                <!-- Timer -->
+                <div class="flex items-center space-x-4">
+                    <div id="timer-display" class="flex items-center space-x-2 px-4 py-2 bg-gray-100 rounded-lg">
+                        <svg class="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span id="timer-text" class="font-mono text-lg font-semibold">--:--</span>
+                    </div>
+                    
+                    <button id="submit-test-btn" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium">
+                        Submit Test
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Progress Bar -->
+            <div class="mt-4">
+                <div class="flex justify-between text-sm text-gray-600 mb-2">
+                    <span>Progress</span>
+                    <span id="progress-text">0%</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div id="progress-bar" class="progress-bar bg-blue-600 h-2 rounded-full" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Test Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <!-- Main Question Area -->
+            <div class="lg:col-span-3">
+                <!-- Loading State -->
+                <div id="loading-state" class="bg-white rounded-lg shadow-md p-8 text-center">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p class="text-gray-600">Loading test questions...</p>
+                </div>
+
+                <!-- Question Display -->
+                <div id="question-container" class="hidden">
+                    <div class="bg-white rounded-lg shadow-md p-6 question-card">
+                        <!-- Section Header -->
+                        <div id="section-header" class="section-header text-white p-4 rounded-lg mb-6">
+                            <h2 id="section-title" class="text-xl font-semibold">Section Title</h2>
+                            <p id="section-info" class="text-sm opacity-90 mt-1">Section information</p>
+                        </div>
+
+                        <!-- Question -->
+                        <div class="mb-6">
+                            <div class="flex items-start justify-between mb-4">
+                                <h3 class="text-lg font-semibold text-gray-900">
+                                    Question <span id="question-number">1</span>
+                                </h3>
+                                <span id="question-difficulty" class="px-3 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700">
+                                    Medium
+                                </span>
+                            </div>
+                            
+                            <div id="question-text" class="text-gray-800 leading-relaxed mb-6">
+                                <!-- Question text will be loaded here -->
+                            </div>
+                        </div>
+
+                        <!-- Options -->
+                        <div id="options-container" class="space-y-3 mb-8">
+                            <!-- Options will be loaded here -->
+                        </div>
+
+                        <!-- Navigation Buttons -->
+                        <div class="flex justify-between items-center pt-6 border-t border-gray-200">
+                            <button id="prev-btn" class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                ← Previous
+                            </button>
+                            
+                            <div class="flex space-x-3">
+                                <button id="clear-answer-btn" class="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors">
+                                    Clear Answer
+                                </button>
+                                <button id="mark-review-btn" class="px-4 py-2 border border-yellow-400 text-yellow-700 rounded-lg hover:bg-yellow-50 transition-colors">
+                                    Mark for Review
+                                </button>
+                            </div>
+                            
+                            <button id="next-btn" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                                Next →
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Error State -->
+                <div id="error-state" class="hidden bg-white rounded-lg shadow-md p-8 text-center">
+                    <div class="text-red-500 mb-4">
+                        <svg class="w-16 h-16 mx-auto" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">Unable to load test</h3>
+                    <p class="text-gray-600 mb-4">There was an error loading the test questions.</p>
+                    <button id="retry-load-btn" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        Try Again
+                    </button>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="lg:col-span-1">
+                <!-- Question Navigation -->
+                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Question Navigation</h3>
+                    
+                    <!-- Legend -->
+                    <div class="grid grid-cols-2 gap-2 text-xs mb-4">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-3 h-3 bg-gray-200 rounded"></div>
+                            <span>Not Visited</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <div class="w-3 h-3 bg-blue-600 rounded"></div>
+                            <span>Current</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <div class="w-3 h-3 bg-green-600 rounded"></div>
+                            <span>Answered</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <div class="w-3 h-3 bg-yellow-500 rounded"></div>
+                            <span>Review</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Question Grid -->
+                    <div id="question-nav-grid" class="grid grid-cols-5 gap-2">
+                        <!-- Question navigation buttons will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Test Instructions -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Instructions</h3>
+                    <ul class="text-sm text-gray-600 space-y-2">
+                        <li>• Select one answer for each question</li>
+                        <li>• Use navigation buttons or question grid to move between questions</li>
+                        <li>• Mark questions for review if unsure</li>
+                        <li>• Submit test before time expires</li>
+                        <li>• Test will auto-submit when time runs out</li>
+                    </ul>
+                    
+                    <div class="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <div class="flex items-center space-x-2">
+                            <svg class="w-5 h-5 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                            </svg>
+                            <span class="text-sm font-medium text-yellow-800">Warning</span>
+                        </div>
+                        <p class="text-sm text-yellow-700 mt-1">
+                            Make sure to submit your test before the timer expires. Unsaved answers will be lost.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Submit Confirmation Modal -->
+<div id="submit-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg max-w-md w-full p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-gray-900">Submit Test</h3>
+            <button id="close-submit-modal" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                </svg>
+            </button>
+        </div>
+        
+        <div class="mb-6">
+            <p class="text-gray-700 mb-4">Are you sure you want to submit your test?</p>
+            
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                        <span class="text-gray-600">Answered:</span>
+                        <span id="modal-answered-count" class="font-semibold ml-1">0</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-600">Remaining:</span>
+                        <span id="modal-remaining-count" class="font-semibold ml-1">0</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-600">For Review:</span>
+                        <span id="modal-review-count" class="font-semibold ml-1">0</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-600">Time Left:</span>
+                        <span id="modal-time-left" class="font-semibold ml-1">--:--</span>
+                    </div>
+                </div>
+            </div>
+            
+            <p class="text-sm text-gray-600 mt-3">
+                Once submitted, you cannot make any changes to your answers.
+            </p>
+        </div>
+        
+        <div class="flex space-x-3">
+            <button id="cancel-submit" class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+                Cancel
+            </button>
+            <button id="confirm-submit" class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                Submit Test
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Auto-submit Warning Modal -->
+<div id="auto-submit-warning" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg max-w-md w-full p-6">
+        <div class="text-center">
+            <div class="text-red-500 mb-4">
+                <svg class="w-16 h-16 mx-auto" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path>
+                </svg>
+            </div>
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">Time Almost Up!</h3>
+            <p class="text-gray-700 mb-4">Your test will be automatically submitted in <span id="warning-countdown" class="font-bold text-red-600">60</span> seconds.</p>
+            <button id="submit-now-btn" class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                Submit Now
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Pass test data to JavaScript
+    window.testData = {
+        testId: {{ test.id | default(0) }},
+        company: "{{ test.company | default('Unknown') }}",
+        totalQuestions: {{ test.total_questions | default(0) }},
+        timeLimit: {{ test.time_limit | default(3600) }}, // in seconds
+        sections: {{ (test.sections or []) | tojson | safe }}
+    };
+</script>
+<script src="{{ url_for('static', filename='js/test.js') }}"></script>
+{% endblock %}
