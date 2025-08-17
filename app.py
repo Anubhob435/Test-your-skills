@@ -57,13 +57,14 @@ app.before_request(security_middleware)
 from models import User, Test, Question, TestAttempt, ProgressMetrics
 
 # Import and register blueprints
-from auth_routes import auth_bp
+from auth_routes import auth_bp, web_auth_bp
 from test_routes import test_bp
 from dashboard_routes import dashboard_bp
 from profile_routes import profile_bp
 from leaderboard_routes import leaderboard_bp
 from admin_routes import admin_bp
 app.register_blueprint(auth_bp)
+app.register_blueprint(web_auth_bp)
 app.register_blueprint(test_bp)
 app.register_blueprint(dashboard_bp)
 app.register_blueprint(profile_bp)

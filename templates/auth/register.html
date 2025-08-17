@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block title %}Register - UEM Placement Preparation Platform{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-full space-y-8">
+        <div>
+            <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
+                Create your account
+            </h2>
+            <p class="mt-2 text-center text-sm text-gray-600">
+                Or
+                <a href="{{ url_for('web_auth.login') }}" class="font-medium text-blue-600 hover:text-blue-500">
+                    sign in to existing account
+                </a>
+            </p>
+        </div>
+        
+        <form class="mt-8 space-y-6" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+            
+            <div class="space-y-4">
+                <div>
+                    <label for="name" class="block text-sm font-medium text-gray-700">Full Name</label>
+                    <input id="name" name="name" type="text" autocomplete="name" required 
+                           class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" 
+                           placeholder="Enter your full name">
+                </div>
+                
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700">Email Address</label>
+                    <input id="email" name="email" type="email" autocomplete="email" required 
+                           class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" 
+                           placeholder="your.name@uem.edu.in">
+                    <p class="mt-1 text-xs text-gray-500">Must be a valid @uem.edu.in email address</p>
+                </div>
+                
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+                    <input id="password" name="password" type="password" autocomplete="new-password" required 
+                           class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" 
+                           placeholder="Create a strong password">
+                    <p class="mt-1 text-xs text-gray-500">At least 6 characters with letters and numbers</p>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="year" class="block text-sm font-medium text-gray-700">Academic Year</label>
+                        <select id="year" name="year" 
+                                class="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                            <option value="">Select Year</option>
+                            <option value="2021">2021</option>
+                            <option value="2022">2022</option>
+                            <option value="2023">2023</option>
+                            <option value="2024">2024</option>
+                            <option value="2025">2025</option>
+                            <option value="2026">2026</option>
+                            <option value="2027">2027</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label for="branch" class="block text-sm font-medium text-gray-700">Branch</label>
+                        <select id="branch" name="branch" 
+                                class="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                            <option value="">Select Branch</option>
+                            <option value="Computer Science">Computer Science</option>
+                            <option value="Information Technology">Information Technology</option>
+                            <option value="Electronics & Communication">Electronics & Communication</option>
+                            <option value="Electrical Engineering">Electrical Engineering</option>
+                            <option value="Mechanical Engineering">Mechanical Engineering</option>
+                            <option value="Civil Engineering">Civil Engineering</option>
+                            <option value="Biotechnology">Biotechnology</option>
+                            <option value="Chemical Engineering">Chemical Engineering</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <button type="submit" 
+                        class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <span class="absolute left-0 inset-y-0 flex items-center pl-3">
+                        <svg class="h-5 w-5 text-blue-500 group-hover:text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path d="M8 9a3 3 0 100-6 3 3 0 000 6zM8 11a6 6 0 016 6H2a6 6 0 016-6z" />
+                        </svg>
+                    </span>
+                    Create Account
+                </button>
+            </div>
+            
+            <div class="text-center">
+                <p class="text-sm text-gray-600">
+                    Already have an account?
+                    <a href="{{ url_for('web_auth.login') }}" class="font-medium text-blue-600 hover:text-blue-500">
+                        Sign in here
+                    </a>
+                </p>
+            </div>
+        </form>
+        
+        <!-- Terms and Privacy -->
+        <div class="mt-6 bg-gray-50 border border-gray-200 rounded-md p-4">
+            <div class="text-xs text-gray-600">
+                <p class="mb-2">
+                    By creating an account, you agree to our Terms of Service and Privacy Policy.
+                </p>
+                <p>
+                    🔒 Your data is secure and will only be used for placement preparation purposes.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Add form validation
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const nameInput = document.getElementById('name');
+    
+    // Real-time email validation
+    emailInput.addEventListener('blur', function() {
+        if (this.value && !this.value.endsWith('@uem.edu.in')) {
+            this.setCustomValidity('Please use your UEM email address (@uem.edu.in)');
+            this.classList.add('border-red-500');
+        } else {
+            this.setCustomValidity('');
+            this.classList.remove('border-red-500');
+        }
+    });
+    
+    // Real-time password validation
+    passwordInput.addEventListener('input', function() {
+        const password = this.value;
+        const hasLetter = /[a-zA-Z]/.test(password);
+        const hasNumber = /\d/.test(password);
+        const isLongEnough = password.length >= 6;
+        
+        if (password && (!hasLetter || !hasNumber || !isLongEnough)) {
+            this.setCustomValidity('Password must be at least 6 characters with letters and numbers');
+            this.classList.add('border-red-500');
+        } else {
+            this.setCustomValidity('');
+            this.classList.remove('border-red-500');
+        }
+    });
+    
+    // Form submission validation
+    form.addEventListener('submit', function(e) {
+        let isValid = true;
+        
+        // Validate name
+        if (!nameInput.value.trim()) {
+            alert('Please enter your full name');
+            nameInput.focus();
+            isValid = false;
+        }
+        
+        // Validate email domain
+        if (emailInput.value && !emailInput.value.endsWith('@uem.edu.in')) {
+            alert('Please use your UEM email address (@uem.edu.in)');
+            emailInput.focus();
+            isValid = false;
+        }
+        
+        // Validate password
+        const password = passwordInput.value;
+        const hasLetter = /[a-zA-Z]/.test(password);
+        const hasNumber = /\d/.test(password);
+        
+        if (password && (password.length < 6 || !hasLetter || !hasNumber)) {
+            alert('Password must be at least 6 characters long and contain both letters and numbers');
+            passwordInput.focus();
+            isValid = false;
+        }
+        
+        if (!isValid) {
+            e.preventDefault();
+        }
+    });
+});
+</script>
+{% endblock %}

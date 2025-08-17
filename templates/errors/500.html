@@ -30,7 +30,7 @@
         <div class="mt-8">
             <p class="text-xs text-gray-500">
                 Error ID: <span id="error-id">{{ request.headers.get('X-Request-ID', 'N/A') }}</span><br>
-                Time: {{ moment().format('YYYY-MM-DD HH:mm:ss') }} UTC
+                Time: <span id="error-time"></span>
             </p>
         </div>
     </div>
@@ -38,6 +38,7 @@
 
 <script>
 // Generate a simple error ID for tracking
+document.getElementById('error-time').textContent = new Date().toISOString();
 if (document.getElementById('error-id').textContent === 'N/A') {
     document.getElementById('error-id').textContent = 'ERR-' + Date.now().toString(36).toUpperCase();
 }

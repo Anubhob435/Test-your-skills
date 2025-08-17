@@ -25,6 +25,9 @@ logger = logging.getLogger(__name__)
 # Create auth blueprint
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
+# Web page routes (without /api prefix)
+web_auth_bp = Blueprint('web_auth', __name__)
+
 @auth_bp.route('/register', methods=['POST'])
 @limiter.limit("5 per minute")
 @csrf_protect
@@ -396,3 +399,137 @@ def handle_internal_error(error):
         'error': 'Internal server error',
         'code': 'INTERNAL_ERROR'
     }), 500
+
+# Web page routes for login/register forms
+from flask import render_template, redirect, url_for, flash
+
+@web_auth_bp.route('/login', methods=['GET', 'POST'])
+def login():
+    """
+    Login page - GET shows form, POST processes login
+    """
+    if request.method == 'GET':
+        # Show login form
+        if current_user.is_authenticated:
+            return redirect(url_for('dashboard'))
+        return render_template('auth/login.html')
+    
+    # Handle POST request (form submission)
+    try:
+        email = request.form.get('email', '').strip()
+        password = request.form.get('password', '')
+        
+        if not email or not password:
+            flash('Email and password are required.', 'error')
+            return render_template('auth/login.html')
+        
+        # Authenticate user
+        success, message, user, token = AuthService.authenticate_user(email, password)
+        
+        if not success:
+            SecurityAuditor.log_failed_authentication(email, request.remote_addr)
+            flash(message, 'error')
+            return render_template('auth/login.html')
+        
+        # Log in user for session-based auth
+        login_user(user)
+        flash('Login successful!', 'success')
+        
+        # Redirect to dashboard or next page
+        next_page = request.args.get('next')
+        return redirect(next_page) if next_page else redirect(url_for('dashboard'))
+        
+    except Exception as e:
+        logger.error(f"Login error: {e}")
+        flash('Login failed. Please try again.', 'error')
+        return render_template('auth/login.html')
+
+
+@web_auth_bp.route('/register', methods=['GET', 'POST'])
+def register():
+    """
+    Registration page - GET shows form, POST processes registration
+    """
+    if request.method == 'GET':
+        # Show registration form
+        if current_user.is_authenticated:
+            return redirect(url_for('dashboard'))
+        return render_template('auth/register.html')
+    
+    # Handle POST request (form submission)
+    try:
+        email = request.form.get('email', '').strip()
+        password = request.form.get('password', '')
+        name = request.form.get('name', '').strip()
+        year = request.form.get('year')
+        branch = request.form.get('branch', '').strip() if request.form.get('branch') else None
+        
+        # Validate required fields
+        if not email:
+            flash('Email is required.', 'error')
+            return render_template('auth/register.html')
+        
+        if not password:
+            flash('Password is required.', 'error')
+            return render_template('auth/register.html')
+        
+        if not name:
+            flash('Name is required.', 'error')
+            return render_template('auth/register.html')
+        
+        # Validate password strength
+        is_valid_password, password_message = AuthService.validate_password_strength(password)
+        if not is_valid_password:
+            flash(password_message, 'error')
+            return render_template('auth/register.html')
+        
+        # Validate year if provided
+        if year:
+            try:
+                year = int(year)
+                if year < 2020 or year > 2030:
+                    flash('Year must be between 2020 and 2030.', 'error')
+                    return render_template('auth/register.html')
+            except (ValueError, TypeError):
+                flash('Year must be a valid number.', 'error')
+                return render_template('auth/register.html')
+        
+        # Register user
+        success, message, user = AuthService.register_user(email, password, name, year, branch)
+        
+        if not success:
+            flash(message, 'error')
+            return render_template('auth/register.html')
+        
+        # Log in user for session-based auth
+        login_user(user)
+        flash('Registration successful! Welcome to UEM Placement Platform.', 'success')
+        
+        return redirect(url_for('dashboard'))
+        
+    except Exception as e:
+        logger.error(f"Registration error: {e}")
+        flash('Registration failed. Please try again.', 'error')
+        return render_template('auth/register.html')
+
+
+@web_auth_bp.route('/logout')
+@login_required
+def logout():
+    """
+    Logout user and redirect to home page
+    """
+    try:
+        user_email = current_user.email if current_user.is_authenticated else 'Unknown'
+        logout_user()
+        session.clear()
+        
+        flash('You have been logged out successfully.', 'success')
+        logger.info(f"User logged out: {user_email}")
+        
+        return redirect(url_for('index'))
+        
+    except Exception as e:
+        logger.error(f"Logout error: {e}")
+        flash('Logout failed. Please try again.', 'error')
+        return redirect(url_for('index'))
