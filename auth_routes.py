@@ -13,6 +13,11 @@ from flask_login import login_user, logout_user, login_required, current_user
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from auth_service import AuthService, APIException
 from models import User, db
+from security_utils import (
+    csrf_protect, sanitize_input, validate_json_input, 
+    rate_limit_by_user, SecurityValidator, SecurityAuditor,
+    require_https, limiter
+)
 import logging
 
 logger = logging.getLogger(__name__)
@@ -21,6 +26,11 @@ logger = logging.getLogger(__name__)
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
 @auth_bp.route('/register', methods=['POST'])
+@limiter.limit("5 per minute")
+@csrf_protect
+@sanitize_input(['email', 'name', 'branch'])
+@validate_json_input(required_fields=['email', 'password', 'name'], optional_fields=['year', 'branch'])
+@require_https
 def register():
     """
     Register a new UEM student
@@ -112,6 +122,11 @@ def register():
         }), 500
 
 @auth_bp.route('/login', methods=['POST'])
+@limiter.limit("10 per minute")
+@csrf_protect
+@sanitize_input(['email'])
+@validate_json_input(required_fields=['email', 'password'])
+@require_https
 def login():
     """
     Authenticate user login
@@ -146,6 +161,8 @@ def login():
         success, message, user, token = AuthService.authenticate_user(email, password)
         
         if not success:
+            # Log failed authentication attempt
+            SecurityAuditor.log_failed_authentication(email, request.remote_addr)
             raise APIException(message, "AUTHENTICATION_FAILED", 401)
         
         # Log in user for session-based auth as well
@@ -234,6 +251,9 @@ def get_profile():
 
 @auth_bp.route('/profile', methods=['PUT'])
 @login_required
+@csrf_protect
+@sanitize_input(['name', 'branch'])
+@validate_json_input(optional_fields=['name', 'year', 'branch'])
 def update_profile():
     """
     Update current user profile

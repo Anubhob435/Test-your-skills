@@ -21,6 +21,15 @@ class Config:
     
     # Security settings
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file upload
+    WTF_CSRF_ENABLED = True
+    WTF_CSRF_TIME_LIMIT = 3600  # 1 hour
+    
+    # Rate limiting settings
+    RATELIMIT_STORAGE_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379')
+    RATELIMIT_DEFAULT = "1000 per hour"
+    
+    # Security headers
+    SECURITY_HEADERS_ENABLED = True
     
     # Database connection pool settings for PostgreSQL
     SQLALCHEMY_ENGINE_OPTIONS = {
@@ -57,6 +66,8 @@ class TestingConfig(Config):
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
     WTF_CSRF_ENABLED = False
     LOG_LEVEL = 'ERROR'  # Reduce logging noise during tests
+    SECURITY_HEADERS_ENABLED = False  # Disable for testing
+    RATELIMIT_ENABLED = False  # Disable rate limiting for tests
     
     # Override engine options for SQLite
     SQLALCHEMY_ENGINE_OPTIONS = {

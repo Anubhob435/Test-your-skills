@@ -40,6 +40,11 @@ class AuthService:
         if not re.match(email_pattern, email):
             return False
         
+        # Check for potential injection attempts
+        dangerous_chars = ['<', '>', '"', "'", ';', '(', ')', '{', '}', '\\']
+        if any(char in email for char in dangerous_chars):
+            return False
+        
         # Check UEM domain
         return email.lower().endswith('@uem.edu.in')
     

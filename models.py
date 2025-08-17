@@ -3,6 +3,7 @@ from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 import json
+import html
 
 # This will be set by the app
 db = SQLAlchemy()
@@ -42,10 +43,10 @@ class User(UserMixin, db.Model):
         """Convert user to dictionary for JSON serialization"""
         return {
             'id': self.id,
-            'email': self.email,
-            'name': self.name,
+            'email': html.escape(self.email) if self.email else None,
+            'name': html.escape(self.name) if self.name else None,
             'year': self.year,
-            'branch': self.branch,
+            'branch': html.escape(self.branch) if self.branch else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'is_admin': self.is_admin
         }
@@ -109,16 +110,16 @@ class Question(db.Model):
         """Convert question to dictionary for JSON serialization"""
         data = {
             'id': self.id,
-            'section': self.section,
-            'question_text': self.question_text,
-            'options': self.options,
-            'difficulty': self.difficulty,
-            'topic': self.topic
+            'section': html.escape(self.section) if self.section else None,
+            'question_text': html.escape(self.question_text) if self.question_text else None,
+            'options': [html.escape(str(opt)) for opt in self.options] if self.options else [],
+            'difficulty': html.escape(self.difficulty) if self.difficulty else None,
+            'topic': html.escape(self.topic) if self.topic else None
         }
         
         if include_answer:
-            data['correct_answer'] = self.correct_answer
-            data['explanation'] = self.explanation
+            data['correct_answer'] = html.escape(self.correct_answer) if self.correct_answer else None
+            data['explanation'] = html.escape(self.explanation) if self.explanation else None
         
         return data
     

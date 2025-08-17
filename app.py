@@ -45,6 +45,14 @@ register_error_handlers(app)
 from request_logging import setup_request_logging
 setup_request_logging(app)
 
+# Initialize security measures
+from security_utils import init_security, security_middleware, setup_security_logging
+init_security(app)
+setup_security_logging()
+
+# Add security middleware
+app.before_request(security_middleware)
+
 # Import models after db initialization
 from models import User, Test, Question, TestAttempt, ProgressMetrics
 
