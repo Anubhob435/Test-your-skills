@@ -42,8 +42,10 @@ from models import User, Test, Question, TestAttempt, ProgressMetrics
 # Import and register blueprints
 from auth_routes import auth_bp
 from test_routes import test_bp
+from dashboard_routes import dashboard_bp
 app.register_blueprint(auth_bp)
 app.register_blueprint(test_bp)
+app.register_blueprint(dashboard_bp)
 
 # Initialize authentication middleware
 from auth_middleware import AuthMiddleware
@@ -58,6 +60,18 @@ def load_user(user_id):
 @app.route('/')
 def index():
     return render_template('index.html')
+
+# Dashboard route
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    return render_template('dashboard.html')
+
+# Test history route
+@app.route('/test-history')
+@login_required
+def test_history():
+    return render_template('test-history.html')
 
 # Health check endpoint
 @app.route('/health')
