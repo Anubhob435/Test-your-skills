@@ -84,6 +84,11 @@ def load_user(user_id):
 def index():
     return render_template('index.html')
 
+# Style test route
+@app.route('/test-styles')
+def test_styles():
+    return render_template('test-styles.html')
+
 # Dashboard route
 @app.route('/dashboard')
 @login_required

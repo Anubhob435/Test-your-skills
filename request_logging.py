@@ -68,12 +68,18 @@ class RequestLoggingMiddleware:
     def teardown_request(self, exception=None):
         """Called when request context is torn down"""
         if exception:
-            self.logger.error(f"Request failed with exception: {str(exception)}", extra={
-                'request_id': g.get('request_id', 'unknown'),
-                'endpoint': request.endpoint,
-                'method': request.method,
-                'exception_type': type(exception).__name__
-            })
+            try:
+                self.logger.error(f"Request failed with exception: {str(exception)}", extra={
+                    'request_id': g.get('request_id', 'unknown'),
+                    'endpoint': getattr(request, 'endpoint', 'unknown'),
+                    'method': getattr(request, 'method', 'unknown'),
+                    'exception_type': type(exception).__name__
+                })
+            except RuntimeError:
+                # Request context not available
+                self.logger.error(f"Request failed with exception: {str(exception)}", extra={
+                    'exception_type': type(exception).__name__
+                })
 
 
 def setup_request_logging(app: Flask):

@@ -15,7 +15,7 @@ import bleach
 import html
 from functools import wraps
 from flask import request, jsonify, current_app, g
-from flask_wtf.csrf import CSRFProtect, validate_csrf
+from flask_wtf.csrf import CSRFProtect, validate_csrf, generate_csrf
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.exceptions import BadRequest
@@ -60,7 +60,7 @@ class SecurityConfig:
         'X-Frame-Options': 'DENY',
         'X-XSS-Protection': '1; mode=block',
         'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
-        'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:;"
+        'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:;"
     }
 
 
@@ -320,7 +320,7 @@ def init_security(app):
     # Add CSRF token to template context
     @app.context_processor
     def inject_csrf_token():
-        return dict(csrf_token=csrf.generate_csrf)
+        return dict(csrf_token=generate_csrf())
 
 
 def csrf_protect(f):
@@ -669,7 +669,7 @@ class CSRFTokenManager:
     @staticmethod
     def generate_token():
         """Generate CSRF token"""
-        return csrf.generate_csrf()
+        return generate_csrf()
     
     @staticmethod
     def validate_token(token: str) -> bool:
