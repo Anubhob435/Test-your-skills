@@ -11,7 +11,7 @@ from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime, timedelta
 from sqlalchemy.exc import SQLAlchemyError
 
-from perplexity_client import PerplexityClient, PerplexityAPIError
+from google_search_client import GoogleSearchClient, GoogleSearchAPIError
 from gemini_client import GeminiClient, GeminiAPIError, QuestionValidationError
 from models import db, Test, Question
 
@@ -28,12 +28,12 @@ class QuestionGenerationError(Exception):
 class QuestionGenerationService:
     """
     Service that orchestrates the complete question generation pipeline
-    Combines Perplexity research with Gemini question generation
+    Combines Google Search research with Gemini question generation
     """
     
     def __init__(self):
         """Initialize the question generation service"""
-        self.perplexity_client = PerplexityClient()
+        self.search_client = GoogleSearchClient()
         self.gemini_client = GeminiClient()
         
         # Configuration
@@ -160,7 +160,7 @@ class QuestionGenerationService:
             raise QuestionGenerationError("Number of questions must be between 1 and 100")
         
         # Validate company name
-        if not self.perplexity_client.validate_company_name(company):
+        if not self.search_client.validate_company_name(company):
             logger.warning(f"Company '{company}' not in supported list, proceeding anyway")
         
         return True
@@ -179,7 +179,7 @@ class QuestionGenerationService:
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(
             None, 
-            self.perplexity_client.research_company_patterns, 
+            self.search_client.research_company_patterns, 
             company, 
             year
         )
@@ -286,7 +286,7 @@ class QuestionGenerationService:
             logger.info(f"Test generation completed for {company} in {total_time:.2f} seconds")
             return result
             
-        except (PerplexityAPIError, GeminiAPIError, QuestionValidationError) as e:
+        except (GoogleSearchAPIError, GeminiAPIError, QuestionValidationError) as e:
             logger.error(f"API error during test generation: {e}")
             raise QuestionGenerationError(f"API error: {e}")
         except Exception as e:
@@ -467,7 +467,7 @@ class QuestionGenerationService:
                     }
                     for stat in company_stats
                 ],
-                'supported_companies': self.perplexity_client.get_supported_companies()
+                'supported_companies': self.search_client.get_supported_companies()
             }
             
         except SQLAlchemyError as e:

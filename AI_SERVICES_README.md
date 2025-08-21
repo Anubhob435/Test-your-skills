@@ -4,30 +4,32 @@ This document explains the AI services integration implemented for the UEM Place
 
 ## Overview
 
-The platform integrates two AI services to create dynamic, company-specific placement test questions:
+The platform integrates Google Gemini 2.5 Flash with Google Search grounding to create dynamic, company-specific placement test questions:
 
-1. **Perplexity AI** - For researching latest placement exam patterns
+1. **Google Search Research** - For researching latest placement exam patterns using Gemini with Google Search
 2. **Google Gemini** - For generating practice questions based on research
 
 ## Components
 
-### 1. PerplexityClient (`perplexity_client.py`)
+### 1. GoogleSearchClient (`google_search_client.py`)
 
-Handles company-specific placement research using Perplexity's sonar-deep-research model.
+Handles company-specific placement research using Gemini 2.5 Flash with Google Search grounding.
 
 **Key Features:**
-- Company-specific research query generation
+- Company-specific research query generation with real-time web data
 - Retry mechanism with exponential backoff
 - Support for 31+ major placement companies
 - Comprehensive error handling
+- Source citations and grounding metadata
 
 **Usage:**
 ```python
-from perplexity_client import PerplexityClient
+from google_search_client import GoogleSearchClient
 
-client = PerplexityClient()
-result = client.research_company_patterns("TCS NQT", 2025)
+client = GoogleSearchClient()
+result = client.research_company_patterns("TCS")
 print(result['research_content'])
+print(f"Sources found: {len(result['sources'])}")
 ```
 
 ### 2. GeminiClient (`gemini_client.py`)
@@ -82,8 +84,10 @@ result = asyncio.run(service.generate_test_async("Infosys", 15))
 Make sure these are set in your `.env` file:
 
 ```env
-SONAR_API_KEY=your_perplexity_api_key
 GEMINI_API_KEY=your_gemini_api_key
+GEMINI_TIMEOUT=90
+GEMINI_MAX_RETRIES=3
+GEMINI_RETRY_DELAY=2
 ```
 
 ### Database Models

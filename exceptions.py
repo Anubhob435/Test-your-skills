@@ -107,7 +107,7 @@ class DuplicateResourceError(BaseAPIException):
 
 
 class ExternalServiceError(BaseAPIException):
-    """Raised when external service (Perplexity, Gemini) fails"""
+    """Raised when external service (Google Search, Gemini) fails"""
     
     def __init__(self, service_name: str, message: str = None, original_error: Exception = None):
         error_message = message or f"{service_name} service is currently unavailable"

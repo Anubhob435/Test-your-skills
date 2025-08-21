@@ -145,9 +145,7 @@ def register_error_handlers(app: Flask):
         service_name = "External Service"
         if hasattr(error, 'request') and error.request:
             url = error.request.url
-            if 'perplexity' in url.lower():
-                service_name = "Perplexity AI"
-            elif 'gemini' in url.lower() or 'google' in url.lower():
+            if 'gemini' in url.lower() or 'google' in url.lower():
                 service_name = "Google Gemini"
         
         external_error = ExternalServiceError(
