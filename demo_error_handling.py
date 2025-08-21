@@ -69,7 +69,7 @@ def create_demo_app():
         import requests
         original_error = requests.ConnectionError("Connection timeout")
         raise ExternalServiceError(
-            service_name="Perplexity AI",
+            service_name="Google Search",
             message="Service temporarily unavailable",
             original_error=original_error
         )

@@ -134,7 +134,7 @@ log_security_event(
 
 # Log external API calls
 log_external_api_call(
-    service="Perplexity AI",
+    service="Google Search",
     endpoint="/api/search",
     status_code=200,
     response_time=1.5
@@ -324,12 +324,12 @@ def update_profile(json_data):
 ### 5. Handle External API Failures Gracefully
 ```python
 @retry_external_api_call(max_retries=3)
-def call_perplexity_api():
+def call_google_search_api():
     try:
         # API call
         pass
     except requests.RequestException as e:
-        raise ExternalServiceError("Perplexity AI", original_error=e)
+        raise ExternalServiceError("Google Search", original_error=e)
 ```
 
 ## Monitoring and Alerting
