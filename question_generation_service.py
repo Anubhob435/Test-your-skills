@@ -180,8 +180,7 @@ class QuestionGenerationService:
         return await loop.run_in_executor(
             None, 
             self.search_client.research_company_patterns, 
-            company, 
-            year
+            company
         )
     
     async def _async_generate_questions(self, research_data: str, company: str, 
@@ -204,6 +203,29 @@ class QuestionGenerationService:
             research_data,
             company,
             num_questions
+        )
+    
+    async def _async_generate_questions_chunked(self, research_data: str, company: str, 
+                                              num_questions: int) -> Dict[str, Any]:
+        """
+        Async wrapper for chunked question generation
+        
+        Args:
+            research_data (str): Research content
+            company (str): Company name
+            num_questions (int): Number of questions
+            
+        Returns:
+            Dict[str, Any]: Generated questions
+        """
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            None,
+            self.gemini_client.generate_questions_chunked,
+            research_data,
+            company,
+            num_questions,
+            8  # 8 questions per chunk for better reliability
         )
     
     async def generate_test_async(self, company: str, num_questions: int = None, 
@@ -256,9 +278,16 @@ class QuestionGenerationService:
             
             # Step 2: Generate questions based on research (async)
             logger.info(f"Step 2: Generating {num_questions} questions for {company}...")
-            generation_result = await self._async_generate_questions(
-                research_data, company, num_questions
-            )
+            
+            # Use chunked generation for large requests to avoid timeouts
+            if num_questions > 15:
+                generation_result = await self._async_generate_questions_chunked(
+                    research_data, company, num_questions
+                )
+            else:
+                generation_result = await self._async_generate_questions(
+                    research_data, company, num_questions
+                )
             questions_data = generation_result['questions']
             
             # Step 3: Validate and save to database
@@ -276,7 +305,7 @@ class QuestionGenerationService:
                 'num_questions': generation_result['num_questions_generated'],
                 'created_at': test.created_at.isoformat(),
                 'generation_time': total_time,
-                'research_time': research_result['response_time'],
+                'research_time': research_result.get('research_time', 0),  # Fixed field name
                 'question_generation_time': generation_result['generation_time'],
                 'from_cache': False,
                 'success': True,

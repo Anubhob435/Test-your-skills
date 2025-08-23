@@ -49,9 +49,9 @@ class GeminiClient:
         }
         
         # Generation parameters
-        self.max_retries = 3
-        self.retry_delay = 2
-        self.timeout = 30
+        self.max_retries = int(os.getenv('GEMINI_MAX_RETRIES', 3))
+        self.retry_delay = int(os.getenv('GEMINI_RETRY_DELAY', 2))
+        self.timeout = int(os.getenv('GEMINI_TIMEOUT', 90))  # Increased timeout for question generation
     
     def _create_question_generation_prompt(self, research_data: str, company: str, 
                                          num_questions: int = 20) -> str:
@@ -302,6 +302,98 @@ class GeminiClient:
         
         raise GeminiAPIError(f"API call failed after {self.max_retries} attempts: {last_exception}")
     
+    def generate_questions_chunked(self, research_data: str, company: str, 
+                                  num_questions: int = 20, chunk_size: int = 10) -> Dict[str, Any]:
+        """
+        Generate questions in smaller chunks to avoid timeouts
+        
+        Args:
+            research_data (str): Research content
+            company (str): Company name
+            num_questions (int): Total number of questions to generate
+            chunk_size (int): Number of questions per chunk
+            
+        Returns:
+            Dict[str, Any]: Combined results from all chunks
+        """
+        logger.info(f"Starting chunked question generation for {company} ({num_questions} questions, {chunk_size} per chunk)")
+        
+        all_sections = []
+        total_generation_time = 0
+        chunks_needed = (num_questions + chunk_size - 1) // chunk_size
+        
+        for chunk_idx in range(chunks_needed):
+            start_q = chunk_idx * chunk_size + 1
+            end_q = min((chunk_idx + 1) * chunk_size, num_questions)
+            chunk_questions = end_q - start_q + 1
+            
+            logger.info(f"Generating chunk {chunk_idx + 1}/{chunks_needed}: questions {start_q}-{end_q}")
+            
+            # Try to generate chunk with retry for JSON parsing errors
+            chunk_attempts = 0
+            max_chunk_attempts = 2
+            
+            while chunk_attempts < max_chunk_attempts:
+                try:
+                    chunk_result = self.generate_questions(research_data, company, chunk_questions)
+                    chunk_sections = chunk_result['questions']['sections']
+                    
+                    # Merge sections
+                    for section in chunk_sections:
+                        # Find existing section or create new one
+                        existing_section = None
+                        for existing in all_sections:
+                            if existing['section_name'] == section['section_name']:
+                                existing_section = existing
+                                break
+                        
+                        if existing_section:
+                            # Update question IDs to be sequential
+                            for question in section['questions']:
+                                question['id'] = len(existing_section['questions']) + 1
+                            existing_section['questions'].extend(section['questions'])
+                        else:
+                            all_sections.append(section)
+                    
+                    total_generation_time += chunk_result['generation_time']
+                    break  # Success, exit retry loop
+                    
+                except Exception as e:
+                    chunk_attempts += 1
+                    logger.error(f"Failed to generate chunk {chunk_idx + 1} (attempt {chunk_attempts}): {e}")
+                    
+                    if chunk_attempts >= max_chunk_attempts:
+                        if chunk_idx == 0:  # If first chunk fails completely, raise error
+                            raise
+                        else:  # If later chunks fail, continue with what we have
+                            logger.warning(f"Chunk {chunk_idx + 1} failed after {max_chunk_attempts} attempts. Continuing with {len(all_sections)} sections from successful chunks")
+                            break
+                    else:
+                        logger.info(f"Retrying chunk {chunk_idx + 1} in 3 seconds...")
+                        time.sleep(3)
+        
+        # Count total questions generated
+        total_generated = sum(len(section['questions']) for section in all_sections)
+        
+        result = {
+            'questions': {
+                'company': company,
+                'year': 2025,
+                'total_questions': total_generated,
+                'sections': all_sections
+            },
+            'generation_time': total_generation_time,
+            'timestamp': time.time(),
+            'company': company,
+            'num_questions_requested': num_questions,
+            'num_questions_generated': total_generated,
+            'chunks_generated': len([s for s in all_sections if s]),
+            'success': True
+        }
+        
+        logger.info(f"Chunked generation completed: {total_generated} questions in {total_generation_time:.2f} seconds")
+        return result
+
     def generate_questions(self, research_data: str, company: str, 
                           num_questions: int = 20) -> Dict[str, Any]:
         """
@@ -341,8 +433,18 @@ class GeminiClient:
                 elif content.startswith('```'):
                     content = content.replace('```', '').strip()
                 
+                # Additional cleaning for malformed JSON
+                content = content.strip()
+                if not content.startswith('{'):
+                    # Find the first { and last }
+                    start_idx = content.find('{')
+                    end_idx = content.rfind('}')
+                    if start_idx != -1 and end_idx != -1:
+                        content = content[start_idx:end_idx+1]
+                
                 questions_json = json.loads(content)
             except json.JSONDecodeError as e:
+                logger.error(f"JSON parsing failed. Content preview: {content[:500]}...")
                 raise GeminiAPIError(f"Failed to parse JSON response: {e}")
             
             # Validate questions

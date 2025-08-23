@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_required, current_user
 from flask_migrate import Migrate
@@ -118,16 +118,33 @@ def leaderboard():
 @app.route('/test/<int:test_id>')
 @login_required
 def test_interface(test_id):
-    # This would normally fetch test data from database
-    # For now, we'll pass basic test structure
-    test_data = {
-        'id': test_id,
-        'company': 'Sample Company',
-        'total_questions': 50,
-        'time_limit': 3600,  # 1 hour in seconds
-        'sections': []
-    }
-    return render_template('test.html', test=test_data)
+    """Render test interface page with actual test data"""
+    try:
+        # Fetch test from database
+        test = Test.query.get(test_id)
+        if not test:
+            flash('Test not found', 'error')
+            return redirect(url_for('dashboard'))
+        
+        # Get question count
+        question_count = Question.query.filter_by(test_id=test_id).count()
+        
+        # Prepare test data for template
+        test_data = {
+            'id': test.id,
+            'company': test.company,
+            'year': test.year,
+            'total_questions': question_count,
+            'time_limit': 3600,  # 1 hour in seconds
+            'sections': []  # Will be loaded via API
+        }
+        
+        return render_template('test.html', test=test_data)
+        
+    except Exception as e:
+        logger.error(f"Error loading test interface for test {test_id}: {e}")
+        flash('Error loading test', 'error')
+        return redirect(url_for('dashboard'))
 
 # Test results route
 @app.route('/test/<int:test_id>/results/<int:attempt_id>')

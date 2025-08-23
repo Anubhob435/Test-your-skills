@@ -92,14 +92,28 @@ class TestInterface {
             
             const response = await API.get(`/api/tests/${this.testData.testId}`);
             
-            if (response.questions && response.questions.length > 0) {
-                this.questions = response.questions;
-                this.processQuestions();
-                this.renderQuestionNavigation();
-                this.navigateToQuestion(0);
-                this.showContent();
+            if (response.sections && response.sections.length > 0) {
+                // Flatten questions from sections into a single array
+                this.questions = [];
+                response.sections.forEach(section => {
+                    if (section.questions && section.questions.length > 0) {
+                        section.questions.forEach(question => {
+                            question.section_name = section.section_name;
+                            this.questions.push(question);
+                        });
+                    }
+                });
+                
+                if (this.questions.length > 0) {
+                    this.processQuestions();
+                    this.renderQuestionNavigation();
+                    this.navigateToQuestion(0);
+                    this.showContent();
+                } else {
+                    throw new Error('No questions found in sections');
+                }
             } else {
-                throw new Error('No questions received');
+                throw new Error('No sections received');
             }
             
         } catch (error) {
@@ -162,12 +176,12 @@ class TestInterface {
         // Update question info
         document.getElementById('current-question-num').textContent = this.currentQuestionIndex + 1;
         document.getElementById('question-number').textContent = this.currentQuestionIndex + 1;
-        document.getElementById('current-section').textContent = question.section || 'General';
+        document.getElementById('current-section').textContent = question.section_name || question.section || 'General';
         
         // Update section header
         const sectionTitle = document.getElementById('section-title');
         const sectionInfo = document.getElementById('section-info');
-        if (sectionTitle) sectionTitle.textContent = question.section || 'General Questions';
+        if (sectionTitle) sectionTitle.textContent = question.section_name || question.section || 'General Questions';
         if (sectionInfo) sectionInfo.textContent = `Question ${this.currentQuestionIndex + 1} of ${this.questions.length}`;
         
         // Update difficulty
@@ -436,6 +450,7 @@ class TestInterface {
             const submissionData = {
                 answers: this.answers,
                 time_taken: timeTaken,
+                started_at: this.testStartTime.toISOString(),
                 marked_for_review: Array.from(this.markedForReview)
             };
             

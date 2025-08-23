@@ -379,11 +379,32 @@ def submit_test(test_id):
         results = []
         section_scores = {}
         
+        logger.info(f"Processing {total_questions} questions for test {test_id}")
+        
         for question in questions:
-            question_id_str = str(question.id)
-            user_answer = answers.get(question_id_str, '').strip().upper()
-            correct_answer = question.correct_answer.strip().upper()
-            is_correct = user_answer == correct_answer
+            try:
+                question_id_str = str(question.id)
+                user_answer_raw = answers.get(question_id_str, '')
+                
+                # Handle None or non-string user answers
+                if user_answer_raw is None:
+                    user_answer = ''
+                else:
+                    user_answer = str(user_answer_raw).strip().upper()
+                
+                # Handle None correct_answer (shouldn't happen but be safe)
+                if question.correct_answer is None:
+                    logger.warning(f"Question {question.id} has None correct_answer")
+                    correct_answer = ''
+                else:
+                    correct_answer = str(question.correct_answer).strip().upper()
+                
+                is_correct = user_answer == correct_answer and user_answer != ''
+                
+            except Exception as e:
+                logger.error(f"Error processing question {question.id}: {e}")
+                logger.error(f"Question data: correct_answer={repr(question.correct_answer)}, user_answer_raw={repr(user_answer_raw)}")
+                raise
             
             if is_correct:
                 correct_answers += 1
