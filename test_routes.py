@@ -406,29 +406,34 @@ def submit_test(test_id):
                 logger.error(f"Question data: correct_answer={repr(question.correct_answer)}, user_answer_raw={repr(user_answer_raw)}")
                 raise
             
-            if is_correct:
-                correct_answers += 1
-            
-            # Track section scores
-            section = question.section
-            if section not in section_scores:
-                section_scores[section] = {'correct': 0, 'total': 0}
-            
-            section_scores[section]['total'] += 1
-            if is_correct:
-                section_scores[section]['correct'] += 1
-            
-            # Add to results
-            results.append({
-                'question_id': question.id,
-                'section': section,
-                'user_answer': user_answer,
-                'correct_answer': correct_answer,
-                'is_correct': is_correct,
-                'explanation': question.explanation,
-                'question_text': question.question_text,
-                'options': question.options
-            })
+                if is_correct:
+                    correct_answers += 1
+                
+                # Track section scores
+                section = question.section or 'Unknown'
+                if section not in section_scores:
+                    section_scores[section] = {'correct': 0, 'total': 0}
+                
+                section_scores[section]['total'] += 1
+                if is_correct:
+                    section_scores[section]['correct'] += 1
+                
+                # Add to results
+                results.append({
+                    'question_id': question.id,
+                    'section': section,
+                    'user_answer': user_answer,
+                    'correct_answer': correct_answer,
+                    'is_correct': is_correct,
+                    'explanation': question.explanation or '',
+                    'question_text': question.question_text or '',
+                    'options': question.options or []
+                })
+                
+            except Exception as e:
+                logger.error(f"Error processing question {question.id}: {e}")
+                logger.error(f"Question data: correct_answer={repr(question.correct_answer)}, user_answer_raw={repr(user_answer_raw)}")
+                raise
         
         current_user = get_current_user()
         
@@ -670,9 +675,21 @@ def get_test_results(test_id, attempt_id):
         
         for question in questions:
             question_id_str = str(question.id)
-            user_answer = user_answers.get(question_id_str, '').strip().upper()
-            correct_answer = question.correct_answer.strip().upper()
-            is_correct = user_answer == correct_answer
+            user_answer_raw = user_answers.get(question_id_str, '')
+            
+            # Handle None or non-string user answers
+            if user_answer_raw is None:
+                user_answer = ''
+            else:
+                user_answer = str(user_answer_raw).strip().upper()
+            
+            # Handle None correct_answer (shouldn't happen but be safe)
+            if question.correct_answer is None:
+                correct_answer = ''
+            else:
+                correct_answer = str(question.correct_answer).strip().upper()
+            
+            is_correct = user_answer == correct_answer and user_answer != ''
             
             # Track section scores
             section = question.section
@@ -718,8 +735,14 @@ def get_test_results(test_id, attempt_id):
             'time_taken': test_attempt.time_taken,
             'started_at': test_attempt.started_at.isoformat() if test_attempt.started_at else None,
             'completed_at': test_attempt.completed_at.isoformat() if test_attempt.completed_at else None,
-            'results': results,
-            'section_scores': formatted_section_scores
+            'questions': results,  # Frontend expects 'questions'
+            'statistics': {        # Frontend expects 'statistics'
+                'section_scores': formatted_section_scores,
+                'overall_score': test_attempt.score,
+                'total_questions': test_attempt.total_questions,
+                'percentage': test_attempt.calculate_percentage(),
+                'time_taken': test_attempt.time_taken
+            }
         }
         
         return jsonify(response_data), 200

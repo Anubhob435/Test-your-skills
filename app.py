@@ -150,21 +150,48 @@ def test_interface(test_id):
 @app.route('/test/<int:test_id>/results/<int:attempt_id>')
 @login_required
 def test_results(test_id, attempt_id):
-    # This would normally fetch test and attempt data from database
-    # For now, we'll pass basic structure
-    test_data = {
-        'id': test_id,
-        'company': 'Sample Company'
-    }
-    attempt_data = {
-        'id': attempt_id,
-        'score': 35,
-        'total_questions': 50,
-        'time_taken': 2400,  # 40 minutes in seconds
-        'answers': {},
-        'completed_at': datetime.utcnow()
-    }
-    return render_template('results.html', test=test_data, attempt=attempt_data)
+    """Render test results page with actual data"""
+    try:
+        # Fetch test attempt from database
+        attempt = TestAttempt.query.get(attempt_id)
+        if not attempt:
+            flash('Test attempt not found', 'error')
+            return redirect(url_for('dashboard'))
+        
+        # Verify the attempt belongs to the current user
+        if attempt.user_id != current_user.id:
+            flash('Access denied', 'error')
+            return redirect(url_for('dashboard'))
+        
+        # Fetch test data
+        test = Test.query.get(test_id)
+        if not test or test.id != attempt.test_id:
+            flash('Test not found', 'error')
+            return redirect(url_for('dashboard'))
+        
+        # Prepare data for template
+        test_data = {
+            'id': test.id,
+            'company': test.company,
+            'year': test.year
+        }
+        
+        attempt_data = {
+            'id': attempt.id,
+            'score': attempt.score,
+            'total_questions': attempt.total_questions,
+            'time_taken': attempt.time_taken,
+            'percentage': (attempt.score / attempt.total_questions * 100) if attempt.total_questions > 0 else 0,
+            'completed_at': attempt.completed_at,
+            'answers': attempt.answers or {}
+        }
+        
+        return render_template('results.html', test=test_data, attempt=attempt_data)
+        
+    except Exception as e:
+        logger.error(f"Error loading test results for attempt {attempt_id}: {e}")
+        flash('Error loading results', 'error')
+        return redirect(url_for('dashboard'))
 
 # Health check endpoint
 @app.route('/health')
